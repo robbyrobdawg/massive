@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
@@ -14,32 +12,28 @@ using Newtonsoft.Json.Linq;
 public class StockDataFunction
 {
     private static readonly HttpClient client = new HttpClient();
-    private static readonly string ApiKey = Environment.GetEnvironmentVariable("MASSIVE_API_KEY");
-    private static readonly string BaseUrl = "https://api.massive.com";
+    private static readonly string ApiKey = Environment.GetEnvironmentVariable("MASSIVE_API_KEY") ?? "";
+    private static readonly string BaseUrl = "https://api.polygon.io";
 
-    // List of tickers to track
     private static readonly List<string> DefaultTickers = new List<string>
     {
         "AAPL", "MSFT", "VOO", "VTI"
-        // Add your tickers here
     };
 
     [Function("GetStockData")]
     public async Task<HttpResponseData> Run(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "stock/{ticker?}")] 
         HttpRequestData req,
-        string ticker,
+        string? ticker,
         FunctionContext context)
     {
         var log = context.GetLogger("StockDataFunction");
         log.LogInformation("Fetching stock data");
 
-        // Use provided ticker or fall back to default list
-        var tickers = string.IsNullOrEmpty(ticker) 
-            ? DefaultTickers 
+        var tickers = string.IsNullOrEmpty(ticker)
+            ? DefaultTickers
             : new List<string> { ticker.ToUpper() };
 
-        // Get date range from query params or default to last 30 days
         var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var fromDate = query["from"] ?? DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-dd");
         var toDate = query["to"] ?? DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
@@ -65,12 +59,11 @@ public class StockDataFunction
         {
             var priceTask = GetStockHistory(ticker, fromDate, toDate);
             var newsTask = GetStockNews(ticker);
-
             await Task.WhenAll(priceTask, newsTask);
 
             return new
             {
-                ticker = ticker,
+                ticker,
                 history = priceTask.Result,
                 news = newsTask.Result
             };
@@ -78,7 +71,7 @@ public class StockDataFunction
         catch (Exception ex)
         {
             log.LogError($"Error fetching {ticker}: {ex.Message}");
-            return new { ticker = ticker, error = ex.Message };
+            return new { ticker, error = ex.Message };
         }
     }
 
@@ -90,13 +83,13 @@ public class StockDataFunction
 
         return json["results"]?.Select(r => new
         {
-            date = DateTimeOffset.FromUnixTimeMilliseconds((long)r["t"]).ToString("yyyy-MM-dd"),
+            date = DateTimeOffset.FromUnixTimeMilliseconds((long)r["t"]!).ToString("yyyy-MM-dd"),
             open = r["o"],
             high = r["h"],
             low = r["l"],
             close = r["c"],
             volume = r["v"]
-        }).ToList();
+        }).ToList()!;
     }
 
     private async Task<object> GetStockNews(string ticker)
@@ -112,6 +105,6 @@ public class StockDataFunction
             source = a["publisher"]?["name"],
             url = a["article_url"],
             sentiment = a["insights"]?[0]?["sentiment"]
-        }).ToList();
+        }).ToList()!;
     }
 }
