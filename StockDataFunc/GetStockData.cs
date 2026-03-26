@@ -34,7 +34,7 @@ public class StockDataFunction
         var log = context.GetLogger("DailyStockPrices1");
         log.LogInformation($"Daily stock price batch 1 triggered at {DateTime.UtcNow}");
 
-        var fromDate = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+        var fromDate = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd");
         var toDate = fromDate;
 
         var allTickers = await GetTickersFromDatabase(log);
