@@ -25,33 +25,61 @@ public class StockDataFunction
     };
 
     // =====================================================================
-    // TIMER TRIGGER: Daily prices only - runs Mon-Fri at 6:30 PM UTC (after US market close)
-    // Skips weekends automatically via DayOfWeek check
+    // TIMER TRIGGER: Daily prices batch 1 (even-indexed tickers)
+    // Runs Mon-Fri at 6:30 PM UTC
     // =====================================================================
-    [Function("DailyStockPrices")]
-    public async Task RunDaily([TimerTrigger("0 30 18 * * 1-5")] TimerInfo timer, FunctionContext context)
+    [Function("DailyStockPrices1")]
+    public async Task RunDaily1([TimerTrigger("0 30 18 * * 1-5")] TimerInfo timer, FunctionContext context)
     {
-        var log = context.GetLogger("DailyStockPrices");
-        log.LogInformation($"Daily stock price timer triggered at {DateTime.UtcNow}");
+        var log = context.GetLogger("DailyStockPrices1");
+        log.LogInformation($"Daily stock price batch 1 triggered at {DateTime.UtcNow}");
 
         var fromDate = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
         var toDate = fromDate;
 
-        var tickers = await GetTickersFromDatabase(log);
-        log.LogInformation($"Processing {tickers.Count} tickers for {fromDate} (prices only)");
+        var allTickers = await GetTickersFromDatabase(log);
+        var tickers = allTickers.Where((t, i) => i % 2 == 0).ToList();
+        log.LogInformation($"Batch 1: Processing {tickers.Count} tickers for {fromDate}");
 
         var results = new List<object>();
         foreach (var t in tickers)
         {
             var result = await GetTickerData(t, fromDate, toDate, skipNews: true, log);
             results.Add(result);
-
-            if (RateLimitMode)
-                await Task.Delay(12000);
+            if (RateLimitMode) await Task.Delay(12000);
         }
 
         await WriteResultsToDatabase(results.ToArray(), skipNews: true, log);
-        log.LogInformation("Daily price update complete");
+        log.LogInformation("Daily price batch 1 complete");
+    }
+
+    // =====================================================================
+    // TIMER TRIGGER: Daily prices batch 2 (odd-indexed tickers)
+    // Runs Mon-Fri at 6:45 PM UTC (15 min after batch 1)
+    // =====================================================================
+    [Function("DailyStockPrices2")]
+    public async Task RunDaily2([TimerTrigger("0 45 18 * * 1-5")] TimerInfo timer, FunctionContext context)
+    {
+        var log = context.GetLogger("DailyStockPrices2");
+        log.LogInformation($"Daily stock price batch 2 triggered at {DateTime.UtcNow}");
+
+        var fromDate = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+        var toDate = fromDate;
+
+        var allTickers = await GetTickersFromDatabase(log);
+        var tickers = allTickers.Where((t, i) => i % 2 != 0).ToList();
+        log.LogInformation($"Batch 2: Processing {tickers.Count} tickers for {fromDate}");
+
+        var results = new List<object>();
+        foreach (var t in tickers)
+        {
+            var result = await GetTickerData(t, fromDate, toDate, skipNews: true, log);
+            results.Add(result);
+            if (RateLimitMode) await Task.Delay(12000);
+        }
+
+        await WriteResultsToDatabase(results.ToArray(), skipNews: true, log);
+        log.LogInformation("Daily price batch 2 complete");
     }
 
     // =====================================================================
@@ -72,7 +100,6 @@ public class StockDataFunction
         var results = new List<object>();
         foreach (var t in tickers)
         {
-            // For news only run — pass empty history, just get news
             try
             {
                 if (RateLimitMode) await Task.Delay(12000);
@@ -100,9 +127,7 @@ public class StockDataFunction
         FunctionContext context)
     {
         var log = context.GetLogger("StockDataFunction");
-
         var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-
         var fromDate = query["from"] ?? DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
         var toDate = query["to"] ?? DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
         var skipNews = bool.Parse(query["skip_news"] ?? "false");
@@ -124,9 +149,7 @@ public class StockDataFunction
         {
             var result = await GetTickerData(t, fromDate, toDate, skipNews, log);
             results.Add(result);
-
-            if (RateLimitMode)
-                await Task.Delay(12000);
+            if (RateLimitMode) await Task.Delay(12000);
         }
 
         await WriteResultsToDatabase(results.ToArray(), skipNews, log);
@@ -240,7 +263,6 @@ public class StockDataFunction
                 var symbol = tickerProp?.GetValue(result)?.ToString();
                 if (string.IsNullOrEmpty(symbol)) continue;
 
-                // Write price history
                 var history = historyProp?.GetValue(result) as System.Collections.IEnumerable;
                 if (history != null)
                 {
@@ -277,7 +299,6 @@ public class StockDataFunction
                     }
                 }
 
-                // Write news only if not skipped
                 if (!skipNews)
                 {
                     var news = newsProp?.GetValue(result) as System.Collections.IEnumerable;
@@ -326,13 +347,10 @@ public class StockDataFunction
         try
         {
             var history = await GetStockHistory(ticker, fromDate, toDate);
-
             if (skipNews)
                 return new { ticker, history, news = (object?)null };
-
             if (RateLimitMode) await Task.Delay(12000);
             var news = await GetStockNews(ticker);
-
             return new { ticker, history, news };
         }
         catch (Exception ex)
