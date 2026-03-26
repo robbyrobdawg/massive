@@ -35,7 +35,7 @@ public class StockDataFunction
         log.LogInformation($"Daily stock price batch 1 triggered at {DateTime.UtcNow}");
 
         var fromDate = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd");
-        var toDate = fromDate;
+        var toDate = DateTime.UtcNow.AddDays(0).ToString("yyyy-MM-dd");
 
         var allTickers = await GetTickersFromDatabase(log);
         var tickers = allTickers.Where((t, i) => i % 2 == 0).ToList();
@@ -64,7 +64,7 @@ public class StockDataFunction
         log.LogInformation($"Daily stock price batch 2 triggered at {DateTime.UtcNow}");
 
         var fromDate = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd");
-        var toDate = fromDate;
+        var toDate = DateTime.UtcNow.AddDays(0).ToString("yyyy-MM-dd");
 
         var allTickers = await GetTickersFromDatabase(log);
         var tickers = allTickers.Where((t, i) => i % 2 != 0).ToList();
@@ -92,7 +92,7 @@ public class StockDataFunction
         log.LogInformation($"Weekly news timer triggered at {DateTime.UtcNow}");
 
         var fromDate = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd");
-        var toDate = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+        var toDate = DateTime.UtcNow.AddDays(0).ToString("yyyy-MM-dd");
 
         var tickers = await GetTickersFromDatabase(log);
         log.LogInformation($"Processing news for {tickers.Count} tickers");
@@ -129,7 +129,7 @@ public class StockDataFunction
         var log = context.GetLogger("StockDataFunction");
         var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var fromDate = query["from"] ?? DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd");
-        var toDate = query["to"] ?? DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+        var toDate = query["to"] ?? DateTime.UtcNow.AddDays(0).ToString("yyyy-MM-dd");
         var skipNews = bool.Parse(query["skip_news"] ?? "false");
 
         List<string> tickers;
