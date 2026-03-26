@@ -46,7 +46,7 @@ public class StockDataFunction
         {
             var result = await GetTickerData(t, fromDate, toDate, skipNews: true, log);
             results.Add(result);
-            if (RateLimitMode) await Task.Delay(12000);
+            if (RateLimitMode) await Task.Delay(8000);
         }
 
         await WriteResultsToDatabase(results.ToArray(), skipNews: true, log);
@@ -75,7 +75,7 @@ public class StockDataFunction
         {
             var result = await GetTickerData(t, fromDate, toDate, skipNews: true, log);
             results.Add(result);
-            if (RateLimitMode) await Task.Delay(12000);
+            if (RateLimitMode) await Task.Delay(8000);
         }
 
         await WriteResultsToDatabase(results.ToArray(), skipNews: true, log);
@@ -102,7 +102,7 @@ public class StockDataFunction
         {
             try
             {
-                if (RateLimitMode) await Task.Delay(12000);
+                if (RateLimitMode) await Task.Delay(8000);
                 var news = await GetStockNews(t);
                 results.Add(new { ticker = t, history = (object?)null, news });
             }
@@ -149,7 +149,7 @@ public class StockDataFunction
         {
             var result = await GetTickerData(t, fromDate, toDate, skipNews, log);
             results.Add(result);
-            if (RateLimitMode) await Task.Delay(12000);
+            if (RateLimitMode) await Task.Delay(8000);
         }
 
         await WriteResultsToDatabase(results.ToArray(), skipNews, log);
@@ -349,7 +349,7 @@ public class StockDataFunction
             var history = await GetStockHistory(ticker, fromDate, toDate);
             if (skipNews)
                 return new { ticker, history, news = (object?)null };
-            if (RateLimitMode) await Task.Delay(12000);
+            if (RateLimitMode) await Task.Delay(8000);
             var news = await GetStockNews(ticker);
             return new { ticker, history, news };
         }
