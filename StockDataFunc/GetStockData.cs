@@ -63,7 +63,7 @@ public class StockDataFunction
         var log = context.GetLogger("DailyStockPrices2");
         log.LogInformation($"Daily stock price batch 2 triggered at {DateTime.UtcNow}");
 
-        var fromDate = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+        var fromDate = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd");
         var toDate = fromDate;
 
         var allTickers = await GetTickersFromDatabase(log);
@@ -128,7 +128,7 @@ public class StockDataFunction
     {
         var log = context.GetLogger("StockDataFunction");
         var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-        var fromDate = query["from"] ?? DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+        var fromDate = query["from"] ?? DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd");
         var toDate = query["to"] ?? DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
         var skipNews = bool.Parse(query["skip_news"] ?? "false");
 
